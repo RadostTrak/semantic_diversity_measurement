@@ -4,3 +4,5 @@ data/
 toy_scripts/
 pretrained/
 embeddings/
+results/
+scripts/__pycache__/vendi_score.cpython-312.pyc
