@@ -1,5 +1,6 @@
+.DS_Store
+.vscode/
 data/
 toy_scripts/
-wiki_giga_2024_300_MFT20_vectors_seed_2024_alpha_0.75_eta_0.05_combined.txt
-.DS_Store
-.vscode/settings.json
+pretrained/
+embeddings/
