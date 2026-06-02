@@ -1,41 +1,71 @@
-import torch
+import pandas as pd
 import numpy as np
+import torch
+from pathlib import Path
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+import time
 
+# Batch size 2 is chosen to fit the model in GPU memory
+batch_size = 2
+max_seq_length = 4096
+
+instruction = "Instruct: Identify the topic or theme of the given text\nQuery: "
+
+# Load the datasets and add labels for AG News
+df_ag = pd.read_csv('data/ag_news.csv')
+df_20 = pd.read_csv('data/twenty_newsgroups.csv')
+df_ag['label_text'] = df_ag['label'].map({0: 'world', 1: 'sports', 2: 'business', 3: 'sci_tech'})
+
+# Load the model
+print("Loading E5-Mistral-7B-Instruct...")
 model = SentenceTransformer(
-    "intfloat/e5-mistral-7b-instruct",
+    'intfloat/e5-mistral-7b-instruct',
     trust_remote_code=True,
-    device="cuda",
-    model_kwargs={"torch_dtype": torch.float16},
+    device='cuda',
+    model_kwargs={'torch_dtype': torch.float16},
 )
 
+model.max_seq_length = max_seq_length
 print(f"Model loaded. GPU memory used: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
 
-instruction = "Instruct: Identify the topic of the given news article\nQuery: "
+Path('embeddings').mkdir(exist_ok=True)
 
-sample_texts = [
-    "The stock market reached a new high today amid strong earnings reports.",
-    "Investors are optimistic about tech sector growth this quarter.",
-    "The basketball team won the championship after a dramatic final game.",
-    "The athlete broke the world record in the 100 meter sprint.",
-    "Scientists discovered a new species of deep sea fish.",
-    "Researchers published findings on a novel protein folding mechanism.",
-]
+# Embed AG News
+print(f"\nEmbedding AG News ({len(df_ag)} documents, batch_size={batch_size})...")
+start = time.time()
+embeddings_ag = model.encode(
+    df_ag['text'].tolist(),
+    prompt=instruction,
+    batch_size=batch_size,
+    show_progress_bar=True,
+    convert_to_numpy=True,
+)
 
-embeddings = model.encode(sample_texts, prompt=instruction)
-print(f"Shape: {embeddings.shape}")
+elapsed = time.time() - start
+print(f"AG News done in {elapsed/60:.1f} min. Shape: {embeddings_ag.shape}")
 
-# Sanity check: within-topic similarity should be higher than between-topic
-sim = cosine_similarity(embeddings)
-print("\nPairwise cosine similarity matrix:")
-print(np.round(sim, 3))
+np.save('embeddings/ag_news_e5.npy', embeddings_ag)
+print("Saved to embeddings/ag_news_e5.npy")
 
-print("\nExpected pattern: pairs (0,1), (2,3), (4,5) should have higher similarity than other pairs.")
-print(f"Finance pair (0,1):    {sim[0, 1]:.3f}")
-print(f"Sports pair (2,3):     {sim[2, 3]:.3f}")
-print(f"Science pair (4,5):    {sim[4, 5]:.3f}")
-print(f"Cross-topic mean:      {np.mean([sim[0,2], sim[0,4], sim[2,4]]):.3f}")
+# Clear cached GPU memory before the next dataset
+torch.cuda.empty_cache()
 
-np.save("embeddings_e5_test.npy", embeddings)
-print("\nSaved embeddings.")
+# Embed Twenty Newsgroups
+print(f"\nEmbedding Twenty Newsgroups ({len(df_20)} documents, batch_size={batch_size})...")
+start = time.time()
+embeddings_20 = model.encode(
+    df_20['text'].tolist(),
+    prompt=instruction,
+    batch_size=batch_size,
+    show_progress_bar=True,
+    convert_to_numpy=True,
+)
+
+elapsed = time.time() - start
+print(f"Twenty Newsgroups done in {elapsed/60:.1f} min. Shape: {embeddings_20.shape}")
+
+# Save embeddings
+np.save('embeddings/twenty_newsgroups_e5.npy', embeddings_20)
+print("Saved to embeddings/twenty_newsgroups_e5.npy")
+
+print("\nAll embeddings complete.")
