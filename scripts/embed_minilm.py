@@ -6,7 +6,6 @@ from sentence_transformers import SentenceTransformer
 # Read in data
 df_ag = pd.read_csv('data/ag_news.csv')
 df_20 = pd.read_csv('data/twenty_newsgroups.csv')
-df_ag['label_text'] = df_ag['label'].map({0: 'world', 1: 'sports', 2: 'business', 3: 'sci_tech'})
 
 # Load the sentence transformer model
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
