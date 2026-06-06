@@ -5,7 +5,7 @@ from vendi_score import vendi
 from sklearn.metrics.pairwise import cosine_similarity
 
 # Configuration
-n_seeds = 8
+n_seeds = 10
 n_articles = [40, 60] # can't be smaller than total number of topics
 
 # Load datasets
@@ -29,12 +29,12 @@ embedding_files = {
 }
 
 # For saving results
-def _row(dataset_name, k, model_name, number, base, seed, vs, mean_cos):
+def _row(dataset_name, model_name, k, label, number, base, seed, vs, mean_cos):
     return {
         'dataset': dataset_name,
-        'k': k,
         'model': model_name,
-        # 'label': label,   fix later
+        'k': k,
+        'label': label,
         'n_articles': number,
         'base_per_topic': base,
         'seed': seed,
@@ -79,7 +79,6 @@ for dataset_name, csv_path in datasets.items():
 results = []
 
 for dataset_name, df in masked_datasets.items():
-    print(f"\n=== {dataset_name} ===")
 
     # Obtain list of topics and number of topics
     topics = list(df['label_text'].unique())
@@ -122,6 +121,10 @@ for dataset_name, df in masked_datasets.items():
                         index_list.append(idx)
                 index = np.array(index_list, dtype=int)
 
+                # Record which topics make up this sample
+                topics_used = topics_shuffled[:k]
+                label = "|".join(topics_used)
+
                 # Compute vendi score and mean cosine similarity
                 for model_name, embeddings in masked_embeddings[dataset_name].items():
                     X = embeddings[index]
@@ -132,11 +135,11 @@ for dataset_name, df in masked_datasets.items():
                     mean_cos = sim[iu].mean()
 
                     results.append(
-                        _row(dataset_name, k, model_name, number, base, seed, vs, mean_cos)
+                        _row(dataset_name, model_name, k, label, number, base, seed, vs, mean_cos)
                     )
 
 results_df = pd.DataFrame(results)
-expected_columns = list(_row('', 0, '', 0, 0, 0, 0.0, 0.0).keys())
+expected_columns = list(_row('', '', 0, '', 0, 0, 0, 0.0, 0.0).keys())
 
 assert list(results_df.columns) == expected_columns, (
     f"Column mismatch:\n  got:      {list(results_df.columns)}\n"
