@@ -9,12 +9,11 @@ import time
 batch_size = 2
 max_seq_length = 4096
 
-instruction = "Instruct: Identify the topic or theme of the given text\nQuery: "
+instruction = "Instruct: Identify the topic of the given news article\nQuery: "
 
 # Load the datasets and add labels for AG News
 df_ag = pd.read_csv('data/ag_news.csv')
 df_20 = pd.read_csv('data/twenty_newsgroups.csv')
-df_ag['label_text'] = df_ag['label'].map({0: 'world', 1: 'sports', 2: 'business', 3: 'sci_tech'})
 
 # Load the model
 print("Loading E5-Mistral-7B-Instruct...")
